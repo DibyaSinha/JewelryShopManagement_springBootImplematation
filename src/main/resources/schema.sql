@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS jewelry (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     company_name VARCHAR(100),
-    type ENUM('GOLD', 'SILVER', 'DIAMOND') NOT NULL,
+    type ENUM('GOLD', 'SILVER') NOT NULL,
     weight DOUBLE NOT NULL,
     stock INT NOT NULL DEFAULT 0,
     making_percent DOUBLE NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS jewelry (
 
 CREATE TABLE IF NOT EXISTS daily_rates (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    metal_type ENUM('GOLD', 'SILVER', 'DIAMOND') NOT NULL,
+    metal_type ENUM('GOLD', 'SILVER') NOT NULL,
     price_per_gram DOUBLE NOT NULL,
     rate_date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -64,10 +64,17 @@ CREATE TABLE IF NOT EXISTS bill_items (
     FOREIGN KEY (jewelry_id) REFERENCES jewelry(id)
 );
 
-CREATE TABLE IF NOT EXISTS daily_sales (
+CREATE TABLE IF NOT EXISTS staff (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    sale_date DATE NOT NULL UNIQUE,
-    total_revenue DOUBLE NOT NULL DEFAULT 0.0,
+    name VARCHAR(100) NOT NULL,
+    mobile_number VARCHAR(15) UNIQUE NOT NULL,
+    aadhaar_number VARCHAR(20) UNIQUE NOT NULL,
+    gender VARCHAR(10) NOT NULL,
+    salary DOUBLE NOT NULL,
+    login_access BOOLEAN NOT NULL DEFAULT FALSE,
+    username VARCHAR(50) UNIQUE,
+    password VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
@@ -76,3 +83,4 @@ CREATE INDEX idx_user_username ON users(username);
 CREATE INDEX idx_jewelry_type ON jewelry(type);
 CREATE INDEX idx_daily_rates_date ON daily_rates(rate_date);
 CREATE INDEX idx_bill_date ON bills(bill_date);
+CREATE INDEX idx_staff_mobile ON staff(mobile_number);

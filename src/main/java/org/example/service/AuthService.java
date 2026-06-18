@@ -1,32 +1,27 @@
 package org.example.service;
 
-import org.example.exception.AuthenticationException;
-import org.example.model.User;
-import org.example.repository.impl.UserRepositoryImpl;
-import org.example.repository.interfaces.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.example.entity.User;
+import org.example.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Service
 public class AuthService {
-    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
-    private UserRepository repo = new UserRepositoryImpl();
+    @Autowired
+    private UserRepository userRepository;
 
-    public User login(String username, String password) {
-        return repo.findByUsername(username)
-                .filter(u -> u.getPassword().equals(password))
-                .orElseThrow(() -> {
-                    logger.warn("Failed login attempt for username: {}", username);
-                    return new AuthenticationException("Invalid username or password");
-                });
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Transactional
+    public User register(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        return userRepository.save(user);
     }
 
-    public void register(String username, String password, String role) {
-        if (repo.findByUsername(username).isPresent()) {
-            throw new RuntimeException("Username already exists");
-        }
-
-        User newUser = new User(0, username, password, role);
-        repo.save(newUser);
-        logger.info("Successfully registered new user: {} with role: {}", username, role);
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username).orElse(null);
     }
 }

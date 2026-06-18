@@ -1,144 +1,157 @@
 package org.example.service;
 
-import org.example.config.DatabaseConfig;
-import org.example.exception.DatabaseException;
+import org.example.dto.BillRequest;
+import org.example.entity.*;
 import org.example.exception.InsufficientStockException;
-import org.example.model.Bill;
-import org.example.model.BillItem;
-import org.example.model.Customer;
-import org.example.model.DailyRate;
-import org.example.model.Jewelry;
-import org.example.repository.impl.BillRepositoryImpl;
-import org.example.repository.impl.DailyRateRepositoryImpl;
-import org.example.repository.impl.JewelryRepositoryImpl;
-import org.example.repository.impl.DailySaleRepositoryImpl;
-import org.example.repository.interfaces.BillRepository;
-import org.example.repository.interfaces.DailyRateRepository;
-import org.example.repository.interfaces.JewelryRepository;
-import org.example.repository.interfaces.DailySaleRepository;
+import org.example.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+@Service
 public class BillingService {
     private static final Logger logger = LoggerFactory.getLogger(BillingService.class);
 
-    private JewelryRepository jewelryRepo = new JewelryRepositoryImpl();
-    private BillRepository billRepo = new BillRepositoryImpl();
-    private DailyRateRepository rateRepo = new DailyRateRepositoryImpl();
-    private DailySaleRepository saleRepo = new DailySaleRepositoryImpl();
-    private CustomerService customerService = new CustomerService();
+    @Autowired
+    private BillRepository billRepository;
+    @Autowired
+    private JewelryRepository jewelryRepository;
+    @Autowired
+    private CustomerRepository customerRepository;
+    @Autowired
+    private DailyRateRepository dailyRateRepository;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private InvoiceService invoiceService;
 
-    public Bill generateBill(List<BillItem> items, long sellerId, String customerMobile) {
-        Connection conn = null;
-        try {
-            conn = DatabaseConfig.getConnection();
-            conn.setAutoCommit(false); // START TRANSACTION
+    @Transactional
+    public Bill generateBill(BillRequest request, Long sellerId) {
+        User seller = userRepository.findById(sellerId)
+                .orElseThrow(() -> new RuntimeException("Seller not found"));
 
-            // 1. Validate Stock & Prepare Updates
-            for (BillItem item : items) {
-                Jewelry dbJewelry = jewelryRepo.findById(item.getJewelry().getId())
-                        .orElseThrow(() -> new RuntimeException("Jewelry not found"));
+        Bill bill = new Bill();
+        bill.setSeller(seller);
+        bill.setBillDate(LocalDateTime.now());
 
-                if (dbJewelry.getStock() < item.getQuantity()) {
-                    throw new InsufficientStockException("Insufficient stock for: " + dbJewelry.getName());
-                }
-
-                // 2. Deduct Stock
-                int updatedStock = dbJewelry.getStock() - item.getQuantity();
-                jewelryRepo.updateStock(dbJewelry.getId(), updatedStock, conn);
-            }
-
-            // 3. Save Bill (Parent)
-            Bill bill = new Bill(0, items);
-            bill.setSellerId(sellerId);
-            
-            // Handle Customer and Discount
-            if (customerMobile != null && !customerMobile.isEmpty()) {
-                Customer customer = customerService.getCustomerByMobile(customerMobile);
-                if (customer != null) {
-                    bill.setCustomerMobile(customer.getMobileNumber());
-                    bill.applyDiscount(customer.getDiscountPercent());
-                }
-            }
-
-            long billId = billRepo.save(bill, conn);
-            bill.setBillId(billId);
-
-            // 4. Save Bill Items (Children)
-            billRepo.saveItems(bill, conn);
-
-            // 5. Generate PDF and save to Database
-            byte[] pdfBytes = org.example.util.InvoiceUtil.generatePdf(bill);
-            if (pdfBytes != null) {
-                billRepo.updatePdfData(billId, pdfBytes, conn);
-                bill.setPdfData(pdfBytes);
-            }
-
-            // 6. Update Daily Total Sale
-            saleRepo.addSaleAmount(LocalDate.now(), bill.getGrandTotal(), conn);
-
-            conn.commit(); // COMMIT TRANSACTION
-            logger.info("Bill generated successfully. ID: {}", bill.getBillId());
-            return bill;
-
-        } catch (Exception e) {
-            if (conn != null) {
-                try {
-                    conn.rollback(); // ROLLBACK TRANSACTION
-                    logger.warn("Transaction rolled back due to error: {}", e.getMessage());
-                } catch (SQLException ex) {
-                    logger.error("Failed to rollback transaction", ex);
-                }
-            }
-            if (e instanceof InsufficientStockException) throw (InsufficientStockException) e;
-            throw new DatabaseException("Failed to generate bill due to database error", e);
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.setAutoCommit(true);
-                    conn.close();
-                } catch (SQLException ignored) {}
-            }
+        if (request.getCustomerMobile() != null && !request.getCustomerMobile().isEmpty()) {
+            Customer customer = customerRepository.findById(request.getCustomerMobile()).orElse(null);
+            bill.setCustomer(customer);
         }
+
+        List<BillItem> billItems = new ArrayList<>();
+        double subtotal = 0;
+
+        for (BillRequest.BillItemRequest itemReq : request.getItems()) {
+            Jewelry jewelry = jewelryRepository.findById(itemReq.getJewelryId())
+                    .orElseThrow(() -> new RuntimeException("Jewelry not found: " + itemReq.getJewelryId()));
+
+            if (jewelry.getStock() < itemReq.getQuantity()) {
+                throw new InsufficientStockException("Insufficient stock for: " + jewelry.getName());
+            }
+
+            jewelry.setStock(jewelry.getStock() - itemReq.getQuantity());
+            jewelryRepository.save(jewelry);
+
+            DailyRate rate = dailyRateRepository.findByMetalTypeAndRateDate(jewelry.getType(), LocalDate.now())
+                    .orElseThrow(() -> new RuntimeException("Rate not updated for " + jewelry.getType()));
+
+            double baseAmount = jewelry.getWeight() * rate.getPricePerGram() * itemReq.getQuantity();
+            double makingCharge = baseAmount * (jewelry.getMakingPercent() / 100.0);
+            double totalItemAmount = baseAmount + makingCharge;
+
+            BillItem billItem = new BillItem();
+            billItem.setBill(bill);
+            billItem.setJewelry(jewelry);
+            billItem.setQuantity(itemReq.getQuantity());
+            billItem.setRateAtTime(rate.getPricePerGram());
+            billItem.setBaseAmount(baseAmount);
+            billItem.setMakingCharge(makingCharge);
+            billItem.setTotalAmount(totalItemAmount);
+
+            billItems.add(billItem);
+            subtotal += totalItemAmount;
+        }
+
+        bill.setItems(billItems);
+        bill.setTotalAmount(subtotal);
+
+        double discountAmount = 0;
+        if (bill.getCustomer() != null) {
+            discountAmount = subtotal * (bill.getCustomer().getDiscountPercent() / 100.0);
+        }
+        bill.setDiscountAmount(discountAmount);
+
+        double taxableAmount = subtotal - discountAmount;
+        double gstAmount = taxableAmount * 0.03;
+        bill.setGstAmount(gstAmount);
+        bill.setGrandTotal(taxableAmount + gstAmount);
+
+        bill = billRepository.save(bill);
+
+        byte[] pdfData = invoiceService.generatePdf(bill);
+        bill.setPdfData(pdfData);
+        billRepository.save(bill);
+
+        logger.info("Bill generated successfully ID: {}", bill.getId());
+        return bill;
     }
 
-    public double getTodayRate(String metalType) {
-        return rateRepo.getTodayRate(metalType)
+    public Double getTodayRate(Jewelry.MetalType type) {
+        return dailyRateRepository.findByMetalTypeAndRateDate(type, LocalDate.now())
                 .map(DailyRate::getPricePerGram)
-                .orElseThrow(() -> new RuntimeException("Today's rate not updated for: " + metalType));
+                .orElseThrow(() -> new RuntimeException("Rate not found for today: " + type));
     }
 
-    public java.util.Map<String, String> getTodayRates() {
-        java.util.Map<String, String> rates = new java.util.HashMap<>();
-        String[] metals = {"GOLD", "SILVER"};
-        for (String m : metals) {
-            String rateStr = rateRepo.getTodayRate(m)
-                    .map(r -> "₹" + String.format("%.2f", r.getPricePerGram()))
-                    .orElse("Not Updated");
-            rates.put(m, rateStr);
-        }
-        return rates;
+    public List<Bill> getAllBills() {
+        return billRepository.findAllByOrderByBillDateDesc();
     }
 
-    public double getTodayTotalSale() {
-        return saleRepo.getSaleForDate(LocalDate.now());
+    public Bill getBillById(Long id) {
+        return billRepository.findById(id).orElse(null);
     }
 
-    public double getMonthlyTotalSale() {
-        return saleRepo.getMonthlySale();
+    public Double getTodayTotalSale() {
+        LocalDateTime start = LocalDate.now().atStartOfDay();
+        LocalDateTime end = LocalDateTime.now();
+        Double total = billRepository.getTotalRevenueBetween(start, end);
+        return total != null ? total : 0.0;
     }
 
-    public double getGrandTotalSale() {
-        return saleRepo.getTotalSale();
+    public Double getMonthlyTotalSale() {
+        LocalDateTime start = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime end = LocalDateTime.now();
+        Double total = billRepository.getTotalRevenueBetween(start, end);
+        return total != null ? total : 0.0;
+    }
+
+    public Double getTotalSale() {
+        Double total = billRepository.getTotalRevenue();
+        return total != null ? total : 0.0;
+    }
+
+    public Map<String, Double> getMonthlySalesBreakdown() {
+        return billRepository.getMonthlySalesBreakdown().stream()
+                .collect(Collectors.toMap(
+                        obj -> (String) obj[0],
+                        obj -> (Double) obj[1]
+                ));
     }
 
     public Map<String, Double> getTodaySalesBySeller() {
-        return billRepo.getSalesBySellerForDate(LocalDate.now());
+        return billRepository.findSalesBySellerForDate(LocalDate.now()).stream()
+                .collect(Collectors.toMap(
+                        obj -> (String) obj[0],
+                        obj -> (Double) obj[1]
+                ));
     }
 }

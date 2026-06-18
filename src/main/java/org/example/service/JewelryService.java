@@ -1,37 +1,58 @@
 package org.example.service;
 
-import org.example.exception.ProductNotFoundException;
-import org.example.model.Jewelry;
-import org.example.repository.impl.JewelryRepositoryImpl;
-import org.example.repository.interfaces.JewelryRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.example.entity.Jewelry;
+import org.example.repository.JewelryRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Service
 public class JewelryService {
-    private static final Logger logger = LoggerFactory.getLogger(JewelryService.class);
-    private JewelryRepository repo = new JewelryRepositoryImpl();
+    @Autowired
+    private JewelryRepository jewelryRepository;
 
-    public void addJewelry(String name, String companyName, String type, double weight, int stock, double making) {
-        Jewelry jewelry = new Jewelry(0, name, companyName, type, weight, stock, making);
-        repo.save(jewelry);
-        logger.info("New jewelry design added: {}", name);
+    public List<Jewelry> getAllJewelry() {
+        return jewelryRepository.findAll();
     }
 
-    public List<Jewelry> getAll() {
-        return repo.findAll();
+    public Jewelry getJewelryById(Long id) {
+        return jewelryRepository.findById(id).orElse(null);
     }
 
-    public Jewelry getById(long id) {
-        return repo.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException("Jewelry not found with ID: " + id));
+    @Transactional
+    public Jewelry addJewelry(Jewelry jewelry) {
+        return jewelryRepository.save(jewelry);
     }
 
-    public void addStock(long id, int qty) {
-        Jewelry j = getById(id);
-        int newStock = j.getStock() + qty;
-        repo.updateStock(id, newStock, null);
-        logger.info("Stock updated for jewelry ID: {}. New stock: {}", id, newStock);
+    @Transactional
+    public Jewelry updateJewelry(Long id, Jewelry jewelryDetails) {
+        Jewelry jewelry = jewelryRepository.findById(id).orElse(null);
+        if (jewelry != null) {
+            jewelry.setName(jewelryDetails.getName());
+            jewelry.setCompanyName(jewelryDetails.getCompanyName());
+            jewelry.setType(jewelryDetails.getType());
+            jewelry.setWeight(jewelryDetails.getWeight());
+            jewelry.setStock(jewelryDetails.getStock());
+            jewelry.setMakingPercent(jewelryDetails.getMakingPercent());
+            return jewelryRepository.save(jewelry);
+        }
+        return null;
+    }
+
+    @Transactional
+    public void deleteJewelry(Long id) {
+        jewelryRepository.deleteById(id);
+    }
+
+    @Transactional
+    public Jewelry addStock(Long id, Integer quantity) {
+        Jewelry jewelry = jewelryRepository.findById(id).orElse(null);
+        if (jewelry != null) {
+            jewelry.setStock(jewelry.getStock() + quantity);
+            return jewelryRepository.save(jewelry);
+        }
+        return null;
     }
 }
