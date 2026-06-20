@@ -1,13 +1,19 @@
-# Stage 1: Build the application
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+# Multi-stage Dockerfile: build with Maven, run on Java 21
+FROM maven:3.9.4-eclipse-temurin-21 as builder
 WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn clean package -DskipTests
+# copy pom and download dependencies first to leverage caching
+COPY pom.xml mvnw* ./
+COPY .mvn .mvn
+RUN mvn -B -DskipTests dependency:go-offline
 
-# Stage 2: Run the application
+# copy source and build
+COPY src ./src
+RUN mvn -B -DskipTests package
+
+# Runtime image
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=builder /app/target/JewelryShopManagement-1.0-SNAPSHOT.jar /app/app.jar
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Use a shell entrypoint so ${PORT} environment var is expanded at runtime
+ENTRYPOINT ["sh","-c","java -Djava.security.egd=file:/dev/./urandom -Dserver.port=${PORT:-8081} -Xms256m -Xmx512m -jar /app/app.jar"]

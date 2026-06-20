@@ -1,0 +1,22 @@
+service: jewelryshop
+env: public
+region: oregon
+build:
+  command: mvn -DskipTests package
+  root: /
+startCommand: java -Dserver.port=${PORT:-8081} -Xms256m -Xmx512m -jar target/JewelryShopManagement-1.0-SNAPSHOT.jar
+envVars:
+  - key: DB_URL
+    value: "" # Set this in Render dashboard (e.g. jdbc:mysql://<host>:<port>/jewelry_db?user=<user>&password=<pw>&sslMode=REQUIRED&serverTimezone=UTC)
+  - key: DB_USERNAME
+    value: "" # Optional if credentials are included in DB_URL
+  - key: DB_PASSWORD
+    value: "" # Optional if credentials are included in DB_URL
+  - key: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - key: PORT
+    value: "8081"
+
+# Notes:
+# - DO NOT commit secrets to this file. Set DB credentials as protected environment variables in the Render dashboard.
+# - For TiDB Cloud, prefer sslMode=VERIFY_IDENTITY and upload the CA/truststore if required.
