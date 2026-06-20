@@ -2,9 +2,9 @@
 FROM maven:3.9.4-eclipse-temurin-21 as builder
 WORKDIR /app
 # copy pom and download dependencies first to leverage caching
-COPY pom.xml mvnw* ./
-COPY .mvn .mvn
-RUN mvn -B -DskipTests dependency:go-offline
+COPY pom.xml ./
+RUN mvn -B -DskipTests dependency:go-offline || true
+
 
 # copy source and build
 COPY src ./src
