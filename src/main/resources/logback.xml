@@ -1,13 +1,25 @@
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{25} - %msg%n</pattern>
         </encoder>
     </appender>
+
+    <!-- Disable Hibernate SQL and Parameter Binding Loggers -->
+    <logger name="org.hibernate.SQL" level="OFF" />
+    <logger name="org.hibernate.orm.jdbc.bind" level="OFF" />
+    <logger name="org.hibernate.type.descriptor.sql" level="OFF" />
+    <logger name="org.hibernate.type" level="OFF" />
+    <logger name="org.hibernate" level="WARN" />
+
+    <!-- Third-Party loggers -->
+    <logger name="com.zaxxer.hikari" level="WARN" />
+    <logger name="org.springframework" level="INFO" />
+
+    <!-- Application Business Loggers -->
+    <logger name="org.example" level="INFO" />
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
-
-    <logger name="com.zaxxer.hikari" level="WARN" />
 </configuration>

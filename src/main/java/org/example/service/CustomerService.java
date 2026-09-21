@@ -1,29 +1,44 @@
 package org.example.service;
 
-import org.example.exception.DatabaseException;
-import org.example.model.Customer;
-import org.example.repository.impl.CustomerRepositoryImpl;
-import org.example.repository.interfaces.CustomerRepository;
+import org.example.entity.Customer;
+import org.example.repository.CustomerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
+@Service
 public class CustomerService {
     private static final Logger logger = LoggerFactory.getLogger(CustomerService.class);
-    private CustomerRepository repo = new CustomerRepositoryImpl();
 
-    public void addOrUpdateCustomer(String mobileNumber, String name, double discountPercent) {
-        if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
-            throw new IllegalArgumentException("Mobile number cannot be empty.");
-        }
-        Customer customer = new Customer(mobileNumber.trim(), name, discountPercent);
-        repo.save(customer);
-        logger.info("Customer {} processed.", mobileNumber);
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    public List<Customer> getAllCustomers() {
+        return customerRepository.findAll();
     }
 
-    public Customer getCustomerByMobile(String mobileNumber) {
-        if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
-            return null;
+    public Customer getCustomerByMobile(String mobile) {
+        return customerRepository.findById(mobile).orElse(null);
+    }
+
+    @Transactional
+    public Customer addOrUpdateCustomer(Customer customer) {
+        if (customer.getDiscountPercent() == null) {
+            customer.setDiscountPercent(0.0);
         }
-        return repo.findByMobile(mobileNumber.trim()).orElse(null);
+        boolean isNew = !customerRepository.existsById(customer.getMobileNumber());
+        Customer saved = customerRepository.save(customer);
+        logger.info("Customer record {} in database: Name='{}', Discount={}%", isNew ? "created" : "updated", saved.getName(), saved.getDiscountPercent());
+        return saved;
+    }
+
+    @Transactional
+    public void deleteCustomer(String mobile) {
+        customerRepository.deleteById(mobile);
+        logger.info("Customer record deleted from database");
     }
 }
