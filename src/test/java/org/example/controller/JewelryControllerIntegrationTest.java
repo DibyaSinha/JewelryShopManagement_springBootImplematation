@@ -16,7 +16,9 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -96,6 +98,24 @@ public class JewelryControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Jewelry deleted"));
         
         assertFalse(jewelryRepository.existsById(saved.getId()));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void updateJewelry_OptimisticLockingConflict_ShouldThrowException() {
+        Jewelry saved = jewelryRepository.save(new Jewelry(null, "Ring", "Co", Jewelry.MetalType.GOLD, 5.0, 10, 10.0));
+        
+        Jewelry session1 = jewelryRepository.findById(saved.getId()).orElseThrow();
+        Jewelry session2 = new Jewelry(saved.getId(), saved.getName(), saved.getCompanyName(), saved.getType(), saved.getWeight(), saved.getStock(), saved.getMakingPercent());
+        session2.setVersion(saved.getVersion()); // Stale version
+
+        session1.setStock(9);
+        jewelryRepository.saveAndFlush(session1);
+
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> {
+            session2.setStock(8);
+            jewelryRepository.saveAndFlush(session2);
+        });
     }
 
     private void assertFalse(boolean condition) {

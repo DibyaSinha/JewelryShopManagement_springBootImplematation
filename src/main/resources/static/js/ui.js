@@ -3,40 +3,40 @@ const ui = {
         const viewContent = document.getElementById('view-content');
         viewContent.innerHTML = `
             <div class="dashboard-grid">
-                <div class="card">
-                    <div class="card-icon icon-blue"><i class="fas fa-shopping-cart"></i></div>
-                    <div class="card-info">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue"><i class="fas fa-shopping-cart"></i></div>
+                    <div class="stat-info">
                         <h4>Today's Sales</h4>
                         <p id="dash-today-sales">Rs.0.00</p>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-icon icon-green"><i class="fas fa-gem"></i></div>
-                    <div class="card-info">
+                <div class="stat-card">
+                    <div class="stat-icon icon-green"><i class="fas fa-gem"></i></div>
+                    <div class="stat-info">
                         <h4>Jewelry Designs</h4>
                         <p id="dash-jewelry-count">0</p>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-icon icon-purple"><i class="fas fa-users"></i></div>
-                    <div class="card-info">
+                <div class="stat-card">
+                    <div class="stat-icon icon-purple"><i class="fas fa-users"></i></div>
+                    <div class="stat-info">
                         <h4>Total Customers</h4>
                         <p id="dash-customer-count">0</p>
                     </div>
                 </div>
             </div>
             <div class="table-container">
-                <div class="flex-between" style="padding: 1rem;">
+                <div class="table-container-header">
                     <h3>Recent Bills</h3>
-                    <button class="btn-small btn-view" onclick="app.switchView('history')">View All</button>
+                    <button class="btn-small btn-view" onclick="app.switchView('history')"><i class="fas fa-arrow-right"></i> View all</button>
                 </div>
                 <table id="recent-bills-table">
                     <thead>
                         <tr>
-                            <th>Bill ID</th>
+                            <th>Bill</th>
                             <th>Customer</th>
                             <th>Total</th>
-                            <th>Date</th>
+                            <th>Time</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -55,10 +55,9 @@ const ui = {
             document.getElementById('dash-jewelry-count').textContent = jewelry.data.length;
             document.getElementById('dash-customer-count').textContent = customers.data.length;
 
-            // Filter for today's bills only
             const todayBills = bills.data.filter(bill => new Date(bill.billDate).toLocaleDateString() === todayStr);
             const recentBills = todayBills.slice(0, 10);
-            
+
             const tbody = document.querySelector('#recent-bills-table tbody');
             tbody.innerHTML = recentBills.length > 0 ? recentBills.map(bill => `
                 <tr>
@@ -67,7 +66,7 @@ const ui = {
                     <td>Rs.${bill.grandTotal.toFixed(2)}</td>
                     <td>${new Date(bill.billDate).toLocaleTimeString()}</td>
                 </tr>
-            `).join('') : '<tr><td colspan="4" style="text-align:center;">No bills generated today</td></tr>';
+            `).join('') : '<tr><td colspan="4" class="table-empty">No bills generated today</td></tr>';
 
             if (app.user.role === 'ADMIN') {
                 const total = await api.reports.getTodayTotal();
@@ -85,7 +84,7 @@ const ui = {
         viewContent.innerHTML = `
             <div class="flex-between">
                 <h3>Jewelry Inventory</h3>
-                ${isAdmin ? '<button class="btn-add" onclick="ui.showJewelryModal()">+ Add New Design</button>' : ''}
+                ${isAdmin ? '<button class="btn-add" onclick="ui.showJewelryModal()"><i class="fas fa-plus"></i> Add design</button>' : ''}
             </div>
             <div class="table-container">
                 <table>
@@ -107,7 +106,7 @@ const ui = {
 
         const res = await api.jewelry.getAll();
         const tbody = document.getElementById('inventory-table-body');
-        tbody.innerHTML = res.data.map(item => `
+        tbody.innerHTML = res.data.length > 0 ? res.data.map(item => `
             <tr>
                 <td>${item.id}</td>
                 <td>${item.name}</td>
@@ -117,11 +116,11 @@ const ui = {
                 <td>${item.makingPercent}%</td>
                 ${isAdmin ? `
                 <td>
-                    <button class="btn-small btn-edit" onclick="ui.showJewelryModal(${item.id})">Edit</button>
-                    <button class="btn-small btn-add" onclick="ui.showStockModal(${item.id})">+ Stock</button>
+                    <button class="btn-small btn-edit" onclick="ui.showJewelryModal(${item.id})"><i class="fas fa-pen"></i> Edit</button>
+                    <button class="btn-small btn-view" onclick="ui.showStockModal(${item.id})"><i class="fas fa-plus"></i> Stock</button>
                 </td>` : ''}
             </tr>
-        `).join('');
+        `).join('') : `<tr><td colspan="${isAdmin ? 7 : 6}" class="table-empty">No jewelry designs yet</td></tr>`;
     },
 
     renderRates: async () => {
@@ -129,16 +128,16 @@ const ui = {
         const isAdmin = app.user.role === 'ADMIN';
         viewContent.innerHTML = `
             <div class="flex-between">
-                <h3>Daily Metal Rates (Per Gram)</h3>
-                ${isAdmin ? '<button class="btn-add" onclick="ui.showRateModal()">Update Rates</button>' : ''}
+                <h3>Daily Metal Rates (per gram)</h3>
+                ${isAdmin ? '<button class="btn-add" onclick="ui.showRateModal()"><i class="fas fa-sync"></i> Update rates</button>' : ''}
             </div>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>Metal</th>
-                            <th>Price / Gram</th>
-                            <th>Last Updated</th>
+                            <th>Price / gram</th>
+                            <th>Last updated</th>
                         </tr>
                     </thead>
                     <tbody id="rates-table-body"></tbody>
@@ -148,13 +147,13 @@ const ui = {
 
         const res = await api.rates.getAll();
         const tbody = document.getElementById('rates-table-body');
-        tbody.innerHTML = res.data.map(rate => `
+        tbody.innerHTML = res.data.length > 0 ? res.data.map(rate => `
             <tr>
                 <td><strong>${rate.metalType}</strong></td>
                 <td>Rs.${rate.pricePerGram.toFixed(2)}</td>
                 <td>${rate.rateDate}</td>
             </tr>
-        `).join('');
+        `).join('') : '<tr><td colspan="3" class="table-empty">No rates recorded yet</td></tr>';
     },
 
     renderBilling: async () => {
@@ -162,35 +161,67 @@ const ui = {
         viewContent.innerHTML = `
             <div class="billing-layout">
                 <div class="bill-form-container">
-                    <div class="card" style="display: block; margin-bottom: 1.5rem;">
-                        <h3>Customer Information</h3>
-                        <div class="flex-between" style="margin-top: 1rem; gap: 1rem;">
-                            <div class="form-group" style="flex: 1;">
-                                <label>Mobile Number</label>
-                                <input type="text" id="bill-cust-mobile" placeholder="Enter mobile">
-                            </div>
-                            <button class="btn-primary" style="width: auto; margin-top: 1.5rem;" onclick="app.fetchCustomerForBill()">Find</button>
+                    <div class="panel">
+                        <div class="flex-between" style="margin-bottom: 0.75rem;">
+                            <h3 style="margin-bottom: 0;">Customer Information</h3>
+                            <span id="cust-status-badge"></span>
                         </div>
-                        <div id="bill-cust-details" class="hidden">
-                            <p><strong>Name:</strong> <span id="bill-cust-name"></span></p>
-                            <p><strong>Discount:</strong> <span id="bill-cust-discount"></span>%</p>
+
+                        <!-- Mobile search row -->
+                        <div class="flex-between" style="margin-top: 0.5rem; margin-bottom: 0; align-items: flex-end; gap: 0.75rem;">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label for="bill-cust-mobile">Mobile Number</label>
+                                <input type="text" id="bill-cust-mobile" placeholder="Enter mobile number" maxlength="15" autocomplete="tel">
+                            </div>
+                            <button type="button" class="btn-outline" id="btn-find-cust" onclick="app.fetchCustomerForBill()">
+                                <i class="fas fa-search"></i> Find
+                            </button>
+                        </div>
+
+                        <!-- Existing customer details (displayed when found) -->
+                        <div id="bill-cust-existing-box" class="hidden" style="margin-top: 1rem; background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            <div class="flex-between" style="margin-bottom: 0.5rem;">
+                                <span class="status-pill on"><i class="fas fa-check-circle"></i> Existing Customer</span>
+                                <button type="button" class="btn-small btn-edit" onclick="app.clearCustomerSelection()"><i class="fas fa-times"></i> Change</button>
+                            </div>
+                            <p style="margin-bottom: 0.35rem;"><strong>Mobile Number:</strong> <span id="bill-cust-display-mobile"></span></p>
+                            <p style="margin-bottom: 0.35rem;"><strong>Customer Name:</strong> <span id="bill-cust-display-name"></span></p>
+                            <p id="bill-cust-display-discount-row" class="hidden" style="margin-bottom: 0;"><strong>Discount:</strong> <span id="bill-cust-display-discount">0</span>%</p>
+                        </div>
+
+                        <!-- New customer form (displayed when not found) -->
+                        <div id="bill-cust-new-box" class="hidden" style="margin-top: 1rem; background: var(--surface-alt); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            <div class="flex-between" style="margin-bottom: 0.5rem;">
+                                <span class="status-pill off"><i class="fas fa-user-plus"></i> New Customer</span>
+                                <button type="button" class="btn-small btn-edit" onclick="app.clearCustomerSelection()"><i class="fas fa-times"></i> Change</button>
+                            </div>
+                            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">Customer not found for this mobile number. Please enter customer name.</p>
+                            <p style="margin-bottom: 0.75rem;"><strong>Mobile Number:</strong> <span id="bill-cust-new-mobile-display"></span></p>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label for="bill-new-cust-name">Customer Name <span style="color: var(--rosewood);">*</span></label>
+                                <input type="text" id="bill-new-cust-name" placeholder="Enter customer name" required>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button type="button" class="btn-small btn-view" onclick="app.saveNewCustomer()"><i class="fas fa-save"></i> Save Customer</button>
+                            </div>
+                            <div id="bill-cust-save-msg" class="message hidden" style="margin-top: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.82rem;"></div>
                         </div>
                     </div>
 
-                    <div class="card" style="display: block;">
-                        <h3>Add Items</h3>
-                        <div class="grid" style="display: grid; grid-template-columns: 1fr 100px auto; gap: 1rem; margin-top: 1rem;">
-                            <div class="form-group">
-                                <label>Select Jewelry</label>
+                    <div class="panel">
+                        <h3>Add items</h3>
+                        <div class="add-item-row mt-md">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Jewelry design</label>
                                 <select id="bill-item-select"></select>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label>Qty</label>
                                 <input type="number" id="bill-item-qty" value="1" min="1">
                             </div>
-                            <button class="btn-add" style="margin-top: 1.5rem;" onclick="app.addItemToBill()">Add</button>
+                            <button class="btn-add" onclick="app.addItemToBill()"><i class="fas fa-plus"></i> Add</button>
                         </div>
-                        <table id="bill-items-table" style="margin-top: 1rem;">
+                        <table id="bill-items-table" class="mt-md">
                             <thead>
                                 <tr>
                                     <th>Item</th>
@@ -205,21 +236,31 @@ const ui = {
                 </div>
 
                 <div class="bill-summary">
-                    <h3>Bill Summary</h3>
-                    <div id="summary-content" style="margin-top: 1.5rem;">
+                    <h3>Bill summary</h3>
+                    <div id="summary-content" class="mt-md">
                         <div class="summary-item"><span>Subtotal</span><span id="sum-subtotal">Rs.0.00</span></div>
                         <div class="summary-item"><span>Discount</span><span id="sum-discount">Rs.0.00</span></div>
                         <div class="summary-item"><span>GST (3%)</span><span id="sum-gst">Rs.0.00</span></div>
-                        <div class="summary-item summary-total"><span>Grand Total</span><span id="sum-grand">Rs.0.00</span></div>
+                        <div class="summary-total flex-between" style="margin-bottom: 0;"><span>Grand total</span><span id="sum-grand">Rs.0.00</span></div>
                     </div>
-                    <button class="btn-primary" style="margin-top: 2rem; background: var(--success-color);" onclick="app.generateBill()">Generate Bill & Download PDF</button>
+                    <button class="btn-primary btn-success mt-lg" onclick="app.generateBill()">Generate bill &amp; download PDF</button>
                 </div>
             </div>
         `;
 
         const jewelry = await api.jewelry.getAll();
         const select = document.getElementById('bill-item-select');
-        select.innerHTML = jewelry.data.map(item => `<option value="${item.id}">${item.name} (${item.type} - ${item.weight}g)</option>`).join('');
+        select.innerHTML = jewelry.data.map(item => `<option value="${item.id}">${item.name} (${item.type} — ${item.weight}g)</option>`).join('');
+
+        const mobileInput = document.getElementById('bill-cust-mobile');
+        if (mobileInput) {
+            mobileInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    app.fetchCustomerForBill();
+                }
+            });
+        }
     },
 
     renderHistory: async () => {
@@ -227,16 +268,16 @@ const ui = {
         viewContent.innerHTML = `
             <div class="flex-between">
                 <h3>Bill History</h3>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="bill-search-id" placeholder="Bill ID" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
-                    <button class="btn-small btn-edit" onclick="app.searchBill()">Search</button>
+                <div class="search-inline">
+                    <input type="text" id="bill-search-id" placeholder="Search by bill ID">
+                    <button class="btn-small btn-edit" onclick="app.searchBill()"><i class="fas fa-search"></i> Search</button>
                 </div>
             </div>
-            <div class="table-container" style="margin-top: 1.5rem;">
+            <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>Bill ID</th>
+                            <th>Bill</th>
                             <th>Customer</th>
                             <th>Total</th>
                             <th>Seller</th>
@@ -245,7 +286,7 @@ const ui = {
                         </tr>
                     </thead>
                     <tbody id="history-table-body">
-                        <tr><td colspan="6" style="text-align:center;">Loading history...</td></tr>
+                        <tr><td colspan="6" class="table-empty">Loading history…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -257,8 +298,7 @@ const ui = {
 
             const isAdmin = app.user.role === 'ADMIN';
             let bills = res.data || [];
-            
-            // If STAFF, only show their own bills
+
             if (!isAdmin) {
                 bills = bills.filter(b => b.seller && b.seller.username === app.user.username);
             }
@@ -272,13 +312,13 @@ const ui = {
                     <td>${bill.seller ? bill.seller.username : 'Unknown'}</td>
                     <td>${new Date(bill.billDate).toLocaleString()}</td>
                     <td>
-                        <button class="btn-small btn-view" onclick="app.downloadPdf(${bill.id})">Download PDF</button>
+                        <button class="btn-small btn-view" onclick="app.downloadPdf(${bill.id})"><i class="fas fa-download"></i> PDF</button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="6" style="text-align:center;">No bills found</td></tr>';
+            `).join('') : '<tr><td colspan="6" class="table-empty">No bills found</td></tr>';
         } catch (e) {
             console.error("Error loading bill history:", e);
-            document.getElementById('history-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center; color: red;">Failed to load history: ${e.message}</td></tr>`;
+            document.getElementById('history-table-body').innerHTML = `<tr><td colspan="6" class="table-empty" style="color: var(--rosewood);">Failed to load history: ${e.message}</td></tr>`;
         }
     },
 
@@ -287,7 +327,7 @@ const ui = {
         viewContent.innerHTML = `
             <div class="flex-between">
                 <h3>Customer Management</h3>
-                <button class="btn-add" onclick="ui.showCustomerModal()">+ Add Customer</button>
+                <button class="btn-add" onclick="ui.showCustomerModal()"><i class="fas fa-plus"></i> Add customer</button>
             </div>
             <div class="table-container">
                 <table>
@@ -307,39 +347,39 @@ const ui = {
 
         const res = await api.customers.getAll();
         const tbody = document.getElementById('customers-table-body');
-        tbody.innerHTML = res.data.map(c => `
+        tbody.innerHTML = res.data.length > 0 ? res.data.map(c => `
             <tr>
                 <td>${c.mobileNumber}</td>
                 <td>${c.name}</td>
                 <td>${c.discountPercent}%</td>
                 <td>${new Date(c.createdAt).toLocaleDateString()}</td>
                 <td>
-                    <button class="btn-small btn-edit" onclick="ui.showCustomerModal('${c.mobileNumber}')">Edit</button>
+                    <button class="btn-small btn-edit" onclick="ui.showCustomerModal('${c.mobileNumber}')"><i class="fas fa-pen"></i> Edit</button>
                 </td>
             </tr>
-        `).join('');
+        `).join('') : '<tr><td colspan="5" class="table-empty">No customers yet</td></tr>';
     },
 
     renderReports: async () => {
         const viewContent = document.getElementById('view-content');
         viewContent.innerHTML = `
             <h3>Sales Reports</h3>
-            <div class="dashboard-grid" style="margin-top: 1.5rem;">
-                 <div class="card" style="display: block;">
+            <div class="dashboard-grid mt-md">
+                 <div class="panel">
                     <h4>Today's Sales</h4>
-                    <p id="report-today-total" style="font-size: 1.5rem; color: var(--success-color);">Rs.0.00</p>
+                    <p id="report-today-total" style="font-family: var(--font-display); font-size: 1.6rem; font-weight: 600; color: var(--emerald); margin-top: 0.5rem;">Rs.0.00</p>
                 </div>
-                <div class="card" style="display: block;">
+                <div class="panel">
                     <h4>This Month's Sales</h4>
-                    <p id="report-month-total" style="font-size: 1.5rem; color: #3498db;">Rs.0.00</p>
+                    <p id="report-month-total" style="font-family: var(--font-display); font-size: 1.6rem; font-weight: 600; color: var(--slate); margin-top: 0.5rem;">Rs.0.00</p>
                 </div>
-                <div class="card" style="display: block;">
+                <div class="panel">
                     <h4>Total All-Time Sales</h4>
-                    <p id="report-all-total" style="font-size: 1.5rem; color: #9b59b6;">Rs.0.00</p>
+                    <p id="report-all-total" style="font-family: var(--font-display); font-size: 1.6rem; font-weight: 600; color: var(--brass-dark); margin-top: 0.5rem;">Rs.0.00</p>
                 </div>
             </div>
             <div class="table-container">
-                <div style="padding: 1rem; border-bottom: 1px solid #eee;">
+                <div class="table-container-header">
                     <h3>Sales by Seller (Today)</h3>
                 </div>
                 <table>
@@ -353,8 +393,8 @@ const ui = {
                 </table>
             </div>
 
-            <div class="table-container" style="margin-top: 2rem;">
-                <div style="padding: 1rem; border-bottom: 1px solid #eee;">
+            <div class="table-container mt-lg">
+                <div class="table-container-header">
                     <h3>Monthly Sales Breakdown</h3>
                 </div>
                 <table>
@@ -382,26 +422,26 @@ const ui = {
             document.getElementById('report-month-total').textContent = `Rs.${month.data.toFixed(2)}`;
             document.getElementById('report-all-total').textContent = `Rs.${all.data.toFixed(2)}`;
 
+            const sellerEntries = Object.entries(bySeller.data);
             const tbody = document.getElementById('seller-report-body');
-            tbody.innerHTML = Object.entries(bySeller.data).map(([seller, amount]) => `
+            tbody.innerHTML = sellerEntries.length > 0 ? sellerEntries.map(([seller, amount]) => `
                 <tr>
                     <td>${seller}</td>
                     <td>Rs.${amount.toFixed(2)}</td>
                 </tr>
-            `).join('');
+            `).join('') : '<tr><td colspan="2" class="table-empty">No sales recorded today</td></tr>';
 
+            const monthEntries = Object.entries(monthlyBreakdown.data).sort((a, b) => b[0].localeCompare(a[0]));
             const mBody = document.getElementById('monthly-breakdown-body');
-            mBody.innerHTML = Object.entries(monthlyBreakdown.data)
-                .sort((a, b) => b[0].localeCompare(a[0])) // Sort months descending
-                .map(([m, amount]) => `
+            mBody.innerHTML = monthEntries.length > 0 ? monthEntries.map(([m, amount]) => `
                 <tr>
                     <td>${m}</td>
                     <td>Rs.${amount.toFixed(2)}</td>
                 </tr>
-            `).join('');
+            `).join('') : '<tr><td colspan="2" class="table-empty">No monthly data yet</td></tr>';
         } catch (e) {
             console.error("Error fetching reports:", e);
-            viewContent.innerHTML += `<div class="message error">Failed to load reports. Please ensure you are logged in as Admin.</div>`;
+            viewContent.innerHTML += `<div class="message error mt-md">Failed to load reports. Please ensure you are logged in as Admin.</div>`;
         }
     },
 
@@ -410,13 +450,13 @@ const ui = {
         viewContent.innerHTML = `
             <div class="flex-between">
                 <h3>Manage Staff</h3>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="staff-search-input" placeholder="Search Name or Mobile" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
-                    <button class="btn-small btn-edit" onclick="ui.filterStaff()">Search</button>
-                    <button class="btn-add" onclick="ui.showStaffModal()">+ Add Staff</button>
+                <div class="search-inline">
+                    <input type="text" id="staff-search-input" placeholder="Search name or mobile">
+                    <button class="btn-small btn-edit" onclick="ui.filterStaff()"><i class="fas fa-search"></i> Search</button>
+                    <button class="btn-add" onclick="ui.showStaffModal()"><i class="fas fa-plus"></i> Add staff</button>
                 </div>
             </div>
-            <div class="table-container" style="margin-top: 1.5rem;">
+            <div class="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -425,12 +465,12 @@ const ui = {
                             <th>Aadhaar</th>
                             <th>Gender</th>
                             <th>Salary</th>
-                            <th>Login Access</th>
+                            <th>Login access</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="staff-table-body">
-                        <tr><td colspan="7" style="text-align:center;">Loading staff...</td></tr>
+                        <tr><td colspan="7" class="table-empty">Loading staff…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -451,8 +491,8 @@ const ui = {
             ui.renderStaffTable(window.allStaff);
             return;
         }
-        const filtered = window.allStaff.filter(s => 
-            s.name.toLowerCase().includes(query) || 
+        const filtered = window.allStaff.filter(s =>
+            s.name.toLowerCase().includes(query) ||
             s.mobileNumber.includes(query)
         );
         ui.renderStaffTable(filtered);
@@ -468,152 +508,14 @@ const ui = {
                 <td>${s.gender}</td>
                 <td>Rs.${s.salary}</td>
                 <td>
-                    <span class="badge" style="background: ${s.loginAccess ? 'var(--success-color)' : 'var(--error-color)'}">
-                        ${s.loginAccess ? 'Yes' : 'No'}
-                    </span>
+                    <span class="status-pill ${s.loginAccess ? 'on' : 'off'}">${s.loginAccess ? 'Enabled' : 'Disabled'}</span>
                 </td>
                 <td>
-                    <button class="btn-small btn-edit" onclick="ui.showStaffModal(${s.id})">Edit</button>
-                    ${s.loginAccess ? `<button class="btn-small btn-view" onclick="ui.showResetPasswordModal(${s.id})">Reset</button>` : ''}
+                    <button class="btn-small btn-edit" onclick="ui.showStaffModal(${s.id})"><i class="fas fa-pen"></i> Edit</button>
+                    ${s.loginAccess ? `<button class="btn-small btn-view" onclick="ui.showResetPasswordModal(${s.id})"><i class="fas fa-key"></i> Reset</button>` : ''}
                 </td>
             </tr>
-        `).join('') : '<tr><td colspan="7" style="text-align:center;">No staff found</td></tr>';
-    },
-
-    showStaffModal: async (id = null) => {
-        let s = { name: '', mobileNumber: '', aadhaarNumber: '', gender: 'Male', salary: 0, loginAccess: false, username: '', password: '' };
-        if (id) {
-            const res = await api.staff.getById(id);
-            s = res.data;
-        }
-
-        const modalBody = document.getElementById('modal-body');
-        modalBody.innerHTML = `
-            <h3>${id ? 'Edit Staff' : 'Add New Staff'}</h3>
-            <form id="staff-form" style="margin-top: 1rem;">
-                <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" id="s-name" value="${s.name}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Mobile Number</label>
-                        <input type="text" id="s-mobile" value="${s.mobileNumber}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Aadhaar Number</label>
-                        <input type="text" id="s-aadhaar" value="${s.aadhaarNumber}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Gender</label>
-                        <select id="s-gender">
-                            <option value="Male" ${s.gender === 'Male' ? 'selected' : ''}>Male</option>
-                            <option value="Female" ${s.gender === 'Female' ? 'selected' : ''}>Female</option>
-                            <option value="Other" ${s.gender === 'Other' ? 'selected' : ''}>Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Salary (Rs)</label>
-                        <input type="number" id="s-salary" value="${s.salary}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Login Access</label>
-                        <select id="s-login">
-                            <option value="false" ${!s.loginAccess ? 'selected' : ''}>No</option>
-                            <option value="true" ${s.loginAccess ? 'selected' : ''}>Yes</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div id="login-fields" class="${s.loginAccess ? '' : 'hidden'}" style="margin-top: 1rem; border-top: 1px dashed #ddd; padding-top: 1rem;">
-                    <h4>Login Credentials</h4>
-                    <div class="form-group" style="margin-top: 0.5rem;">
-                        <label>Username</label>
-                        <input type="text" id="s-username" value="${s.username || ''}">
-                    </div>
-                    ${!id ? `
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="s-password">
-                    </div>` : ''}
-                </div>
-
-                <button type="submit" class="btn-primary" style="margin-top: 1.5rem;">${id ? 'Update Staff' : 'Save Staff'}</button>
-            </form>
-        `;
-
-        document.getElementById('modal-container').classList.remove('hidden');
-
-        // Toggle login fields
-        document.getElementById('s-login').addEventListener('change', function() {
-            const loginFields = document.getElementById('login-fields');
-            if (this.value === 'true') {
-                loginFields.classList.remove('hidden');
-                document.getElementById('s-username').setAttribute('required', 'true');
-                if(!id) document.getElementById('s-password').setAttribute('required', 'true');
-            } else {
-                loginFields.classList.add('hidden');
-                document.getElementById('s-username').removeAttribute('required');
-                if(!id) document.getElementById('s-password').removeAttribute('required');
-            }
-        });
-
-        document.getElementById('staff-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const loginAccess = document.getElementById('s-login').value === 'true';
-            const data = {
-                name: document.getElementById('s-name').value,
-                mobileNumber: document.getElementById('s-mobile').value,
-                aadhaarNumber: document.getElementById('s-aadhaar').value,
-                gender: document.getElementById('s-gender').value,
-                salary: parseFloat(document.getElementById('s-salary').value),
-                loginAccess: loginAccess,
-                username: loginAccess ? document.getElementById('s-username').value : null,
-                password: loginAccess && !id ? document.getElementById('s-password').value : null
-            };
-
-            try {
-                let res;
-                if (id) res = await api.staff.update(id, data);
-                else res = await api.staff.create(data);
-                
-                if (res.success) {
-                    document.getElementById('modal-container').classList.add('hidden');
-                    ui.renderStaff();
-                } else {
-                    alert(res.message || "Error saving staff details");
-                }
-            } catch (err) {
-                console.error(err);
-                alert("Error saving staff details: " + err.message);
-            }
-        };
-    },
-
-    showResetPasswordModal: (id) => {
-        const modalBody = document.getElementById('modal-body');
-        modalBody.innerHTML = `
-            <h3>Reset Staff Password</h3>
-            <form id="reset-password-form" style="margin-top: 1rem;">
-                <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" id="new-password" required>
-                </div>
-                <button type="submit" class="btn-primary">Reset Password</button>
-            </form>
-        `;
-        document.getElementById('modal-container').classList.remove('hidden');
-        document.getElementById('reset-password-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const newPassword = document.getElementById('new-password').value;
-            try {
-                await api.staff.resetPassword(id, newPassword);
-                alert("Password reset successfully");
-                document.getElementById('modal-container').classList.add('hidden');
-            } catch (err) {
-                alert("Failed to reset password");
-            }
-        };
+        `).join('') : '<tr><td colspan="7" class="table-empty">No staff found</td></tr>';
     },
 
     showJewelryModal: async (id = null) => {
@@ -626,35 +528,39 @@ const ui = {
         const modalBody = document.getElementById('modal-body');
         modalBody.innerHTML = `
             <h3>${id ? 'Edit Jewelry Design' : 'Add New Jewelry Design'}</h3>
-            <form id="jewelry-form" style="margin-top: 1rem;">
+            <form id="jewelry-form" class="mt-md">
                 <div class="form-group">
                     <label>Name</label>
                     <input type="text" id="j-name" value="${item.name}" required>
                 </div>
-                <div class="form-group">
-                    <label>Metal Type</label>
-                    <select id="j-type">
-                        <option value="GOLD" ${item.type === 'GOLD' ? 'selected' : ''}>GOLD</option>
-                        <option value="SILVER" ${item.type === 'SILVER' ? 'selected' : ''}>SILVER</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Metal type</label>
+                        <select id="j-type">
+                            <option value="GOLD" ${item.type === 'GOLD' ? 'selected' : ''}>GOLD</option>
+                            <option value="SILVER" ${item.type === 'SILVER' ? 'selected' : ''}>SILVER</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Weight (grams)</label>
+                        <input type="number" step="0.001" id="j-weight" value="${item.weight}" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock</label>
+                        <input type="number" id="j-stock" value="${item.stock}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Making percent (%)</label>
+                        <input type="number" step="0.1" id="j-making" value="${item.makingPercent}" required>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Weight (grams)</label>
-                    <input type="number" step="0.001" id="j-weight" value="${item.weight}" required>
-                </div>
-                <div class="form-group">
-                    <label>Stock</label>
-                    <input type="number" id="j-stock" value="${item.stock}" required>
-                </div>
-                <div class="form-group">
-                    <label>Making Percent (%)</label>
-                    <input type="number" step="0.1" id="j-making" value="${item.makingPercent}" required>
-                </div>
-                <div class="form-group">
-                    <label>Company Name</label>
+                    <label>Company name</label>
                     <input type="text" id="j-company" value="${item.companyName || ''}">
                 </div>
-                <button type="submit" class="btn-primary">${id ? 'Update' : 'Save'}</button>
+                <button type="submit" class="btn-primary">${id ? 'Update design' : 'Save design'}</button>
             </form>
         `;
 
@@ -680,12 +586,12 @@ const ui = {
         const modalBody = document.getElementById('modal-body');
         modalBody.innerHTML = `
             <h3>Add Stock</h3>
-            <form id="stock-form" style="margin-top: 1rem;">
+            <form id="stock-form" class="mt-md">
                 <div class="form-group">
                     <label>Quantity to add</label>
                     <input type="number" id="s-qty" value="1" min="1" required>
                 </div>
-                <button type="submit" class="btn-primary">Add Stock</button>
+                <button type="submit" class="btn-primary">Add stock</button>
             </form>
         `;
         document.getElementById('modal-container').classList.remove('hidden');
@@ -702,23 +608,23 @@ const ui = {
         const modalBody = document.getElementById('modal-body');
         modalBody.innerHTML = `
             <h3>Update Today's Rates</h3>
-            <form id="rate-form" style="margin-top: 1rem;">
+            <form id="rate-form" class="mt-md">
                 <div class="form-group">
-                    <label>Metal Type</label>
+                    <label>Metal type</label>
                     <select id="r-type">
                         <option value="GOLD">GOLD</option>
                         <option value="SILVER">SILVER</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Price Per Gram</label>
+                    <label>Price per gram</label>
                     <input type="number" step="0.01" id="r-price" required>
                 </div>
                 <div class="form-group">
                     <label>Date</label>
                     <input type="date" id="r-date" value="${new Date().toISOString().split('T')[0]}" required>
                 </div>
-                <button type="submit" class="btn-primary">Update Rate</button>
+                <button type="submit" class="btn-primary">Update rate</button>
             </form>
         `;
         document.getElementById('modal-container').classList.remove('hidden');
@@ -746,9 +652,9 @@ const ui = {
         const modalBody = document.getElementById('modal-body');
         modalBody.innerHTML = `
             <h3>${mobile ? 'Edit Customer' : 'Add New Customer'}</h3>
-            <form id="customer-form" style="margin-top: 1rem;">
+            <form id="customer-form" class="mt-md">
                 <div class="form-group">
-                    <label>Mobile Number</label>
+                    <label>Mobile number</label>
                     <input type="text" id="c-mobile" value="${c.mobileNumber}" ${mobile ? 'disabled' : ''} required>
                 </div>
                 <div class="form-group">
@@ -756,10 +662,10 @@ const ui = {
                     <input type="text" id="c-name" value="${c.name}" required>
                 </div>
                 <div class="form-group">
-                    <label>Discount Percent (%)</label>
+                    <label>Discount percent (%)</label>
                     <input type="number" step="0.1" id="c-discount" value="${c.discountPercent}" required>
                 </div>
-                <button type="submit" class="btn-primary">Save Customer</button>
+                <button type="submit" class="btn-primary">Save customer</button>
             </form>
         `;
         document.getElementById('modal-container').classList.remove('hidden');
@@ -773,6 +679,141 @@ const ui = {
             await api.customers.save(data);
             document.getElementById('modal-container').classList.add('hidden');
             ui.renderCustomers();
+        };
+    },
+
+    showStaffModal: async (id = null) => {
+        let s = { name: '', mobileNumber: '', aadhaarNumber: '', gender: 'Male', salary: 0, loginAccess: false, username: '', password: '' };
+        if (id) {
+            const res = await api.staff.getById(id);
+            s = res.data;
+        }
+
+        const modalBody = document.getElementById('modal-body');
+        modalBody.innerHTML = `
+            <h3>${id ? 'Edit Staff' : 'Add New Staff'}</h3>
+            <form id="staff-form" class="mt-md">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full name</label>
+                        <input type="text" id="s-name" value="${s.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Mobile number</label>
+                        <input type="text" id="s-mobile" value="${s.mobileNumber}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Aadhaar number</label>
+                        <input type="text" id="s-aadhaar" value="${s.aadhaarNumber}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="s-gender">
+                            <option value="Male" ${s.gender === 'Male' ? 'selected' : ''}>Male</option>
+                            <option value="Female" ${s.gender === 'Female' ? 'selected' : ''}>Female</option>
+                            <option value="Other" ${s.gender === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Salary (Rs)</label>
+                        <input type="number" id="s-salary" value="${s.salary}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Login access</label>
+                        <select id="s-login">
+                            <option value="false" ${!s.loginAccess ? 'selected' : ''}>No</option>
+                            <option value="true" ${s.loginAccess ? 'selected' : ''}>Yes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="login-fields" class="${s.loginAccess ? '' : 'hidden'}" style="margin-top: 0.5rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
+                    <h4>Login Credentials</h4>
+                    <div class="form-group mt-md" style="margin-top: 0.75rem;">
+                        <label>Username</label>
+                        <input type="text" id="s-username" value="${s.username || ''}">
+                    </div>
+                    ${!id ? `
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="s-password">
+                    </div>` : ''}
+                </div>
+
+                <button type="submit" class="btn-primary mt-md" style="margin-top: 0.5rem;">${id ? 'Update staff' : 'Save staff'}</button>
+            </form>
+        `;
+
+        document.getElementById('modal-container').classList.remove('hidden');
+
+        document.getElementById('s-login').addEventListener('change', function() {
+            const loginFields = document.getElementById('login-fields');
+            if (this.value === 'true') {
+                loginFields.classList.remove('hidden');
+                document.getElementById('s-username').setAttribute('required', 'true');
+                if (!id) document.getElementById('s-password').setAttribute('required', 'true');
+            } else {
+                loginFields.classList.add('hidden');
+                document.getElementById('s-username').removeAttribute('required');
+                if (!id) document.getElementById('s-password').removeAttribute('required');
+            }
+        });
+
+        document.getElementById('staff-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const loginAccess = document.getElementById('s-login').value === 'true';
+            const data = {
+                name: document.getElementById('s-name').value,
+                mobileNumber: document.getElementById('s-mobile').value,
+                aadhaarNumber: document.getElementById('s-aadhaar').value,
+                gender: document.getElementById('s-gender').value,
+                salary: parseFloat(document.getElementById('s-salary').value),
+                loginAccess: loginAccess,
+                username: loginAccess ? document.getElementById('s-username').value : null,
+                password: loginAccess && !id ? document.getElementById('s-password').value : null
+            };
+
+            try {
+                let res;
+                if (id) res = await api.staff.update(id, data);
+                else res = await api.staff.create(data);
+
+                if (res.success) {
+                    document.getElementById('modal-container').classList.add('hidden');
+                    ui.renderStaff();
+                } else {
+                    alert(res.message || "Error saving staff details");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error saving staff details: " + err.message);
+            }
+        };
+    },
+
+    showResetPasswordModal: (id) => {
+        const modalBody = document.getElementById('modal-body');
+        modalBody.innerHTML = `
+            <h3>Reset Staff Password</h3>
+            <form id="reset-password-form" class="mt-md">
+                <div class="form-group">
+                    <label>New password</label>
+                    <input type="password" id="new-password" required>
+                </div>
+                <button type="submit" class="btn-primary">Reset password</button>
+            </form>
+        `;
+        document.getElementById('modal-container').classList.remove('hidden');
+        document.getElementById('reset-password-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const newPassword = document.getElementById('new-password').value;
+            try {
+                await api.staff.resetPassword(id, newPassword);
+                alert("Password reset successfully");
+                document.getElementById('modal-container').classList.add('hidden');
+            } catch (err) {
+                alert("Failed to reset password");
+            }
         };
     }
 };

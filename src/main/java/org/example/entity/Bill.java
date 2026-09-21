@@ -38,11 +38,6 @@ public class Bill {
     @Column(name = "bill_date")
     private LocalDateTime billDate;
 
-    @Lob
-    @JsonIgnore
-    @Column(name = "pdf_data", columnDefinition = "LONGBLOB")
-    private byte[] pdfData;
-
     @OneToMany(mappedBy = "bill", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BillItem> items = new ArrayList<>();
 
@@ -68,8 +63,6 @@ public class Bill {
     public void setGrandTotal(Double grandTotal) { this.grandTotal = grandTotal; }
     public LocalDateTime getBillDate() { return billDate; }
     public void setBillDate(LocalDateTime billDate) { this.billDate = billDate; }
-    public byte[] getPdfData() { return pdfData; }
-    public void setPdfData(byte[] pdfData) { this.pdfData = pdfData; }
     public List<BillItem> getItems() { return items; }
     public void setItems(List<BillItem> items) { this.items = items; }
     public LocalDateTime getCreatedAt() { return createdAt; }

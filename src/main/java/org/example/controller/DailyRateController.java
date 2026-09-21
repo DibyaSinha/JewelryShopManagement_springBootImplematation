@@ -4,6 +4,8 @@ import org.example.dto.ApiResponse;
 import org.example.entity.DailyRate;
 import org.example.entity.Jewelry;
 import org.example.service.DailyRateService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/rates")
 public class DailyRateController {
+    private static final Logger logger = LoggerFactory.getLogger(DailyRateController.class);
 
     @Autowired
     private DailyRateService dailyRateService;
@@ -33,6 +36,8 @@ public class DailyRateController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<DailyRate>> update(@RequestBody DailyRate rate) {
-        return ResponseEntity.ok(ApiResponse.success(dailyRateService.saveRate(rate), "Daily rate updated"));
+        DailyRate saved = dailyRateService.saveRate(rate);
+        logger.info("Daily rate updated: Metal={}, Rate=Rs.{}/g, Date={}", saved.getMetalType(), saved.getPricePerGram(), saved.getRateDate());
+        return ResponseEntity.ok(ApiResponse.success(saved, "Daily rate updated"));
     }
 }

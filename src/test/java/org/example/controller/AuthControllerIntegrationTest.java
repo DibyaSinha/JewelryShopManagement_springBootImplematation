@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,5 +80,42 @@ public class AuthControllerIntegrationTest {
                 .content(objectMapper.writeValueAsString(loginReq)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void unauthenticatedProtectedEndpoint_ShouldReturn401WithoutBasicAuthHeader() throws Exception {
+        mockMvc.perform(get("/api/jewelry"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist("WWW-Authenticate"));
+    }
+
+    @Test
+    void publicStaticResources_ShouldBeAccessibleWithoutAuth() throws Exception {
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/images/logo.png"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void login_ShouldEstablishSessionAndAllowProtectedAccess() throws Exception {
+        userRepository.save(new User(null, "testUser", passwordEncoder.encode("testPass"), "ADMIN"));
+
+        Map<String, String> loginReq = new HashMap<>();
+        loginReq.put("username", "testUser");
+        loginReq.put("password", "testPass");
+
+        var loginResult = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        var session = loginResult.getRequest().getSession(false);
+        assert session != null;
+
+        mockMvc.perform(get("/api/jewelry").session((org.springframework.mock.web.MockHttpSession) session))
+                .andExpect(status().isOk());
     }
 }

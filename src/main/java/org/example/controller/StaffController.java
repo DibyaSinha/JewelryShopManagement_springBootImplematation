@@ -3,6 +3,8 @@ package org.example.controller;
 import org.example.dto.ApiResponse;
 import org.example.entity.Staff;
 import org.example.service.StaffService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +17,7 @@ import java.util.Map;
 @RequestMapping("/api/staff")
 @PreAuthorize("hasRole('ADMIN')")
 public class StaffController {
+    private static final Logger logger = LoggerFactory.getLogger(StaffController.class);
 
     @Autowired
     private StaffService staffService;
@@ -33,17 +36,22 @@ public class StaffController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<Staff>> createStaff(@RequestBody Staff staff) {
-        return ResponseEntity.ok(ApiResponse.success(staffService.createStaff(staff), "Staff created successfully"));
+        Staff created = staffService.createStaff(staff);
+        logger.info("Staff member created successfully: Name='{}' (ID: {})", created.getName(), created.getId());
+        return ResponseEntity.ok(ApiResponse.success(created, "Staff created successfully"));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Staff>> updateStaff(@PathVariable Long id, @RequestBody Staff staff) {
-        return ResponseEntity.ok(ApiResponse.success(staffService.updateStaff(id, staff), "Staff updated successfully"));
+        Staff updated = staffService.updateStaff(id, staff);
+        logger.info("Staff member updated successfully: ID {}", id);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Staff updated successfully"));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStaff(@PathVariable Long id) {
         staffService.deleteStaff(id);
+        logger.info("Staff member deleted successfully: ID {}", id);
         return ResponseEntity.ok(ApiResponse.success(null, "Staff deleted successfully"));
     }
 
@@ -51,6 +59,7 @@ public class StaffController {
     public ResponseEntity<ApiResponse<Void>> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> payload) {
         String newPassword = payload.get("newPassword");
         staffService.resetPassword(id, newPassword);
+        logger.info("Password reset successfully for staff ID: {}", id);
         return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully"));
     }
 }

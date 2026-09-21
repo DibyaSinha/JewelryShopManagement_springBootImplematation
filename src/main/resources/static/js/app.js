@@ -17,11 +17,11 @@ const app = {
     bindEvents: () => {
         document.getElementById('login-form').addEventListener('submit', app.handleLogin);
         document.getElementById('logout-btn').addEventListener('click', app.logout);
-        
+
         // Password toggle logic
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('password');
-        
+
         togglePassword.addEventListener('click', function() {
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
             passwordInput.setAttribute('type', type);
@@ -81,7 +81,12 @@ const app = {
         document.getElementById('app-container').classList.remove('hidden');
         document.getElementById('user-display-name').textContent = app.user.username;
         document.getElementById('user-role').textContent = app.user.role;
-        
+
+        const userInfo = document.getElementById('user-info');
+        if (userInfo) {
+            userInfo.setAttribute('data-initial', (app.user.username || '?').charAt(0).toUpperCase());
+        }
+
         app.generateSidebar();
         app.updateRatesBar().then(() => {
             if (app.user.role === 'ADMIN') {
@@ -96,30 +101,19 @@ const app = {
             const types = ['GOLD', 'SILVER'];
             const ratePromises = types.map(t => api.rates.getToday(t).catch(() => null));
             const rates = await Promise.all(ratePromises);
-            
+
             const missingRates = types.filter((type, i) => !rates[i] || !rates[i].data);
-            
+
             if (missingRates.length > 0) {
-                // If the warning doesn't exist, create it
                 if (!document.getElementById('rate-warning-banner')) {
-                    const header = document.querySelector('.content-header');
                     const warningDiv = document.createElement('div');
                     warningDiv.id = 'rate-warning-banner';
-                    warningDiv.className = 'message error';
-                    warningDiv.style.position = 'absolute';
-                    warningDiv.style.top = '80px';
-                    warningDiv.style.left = '50%';
-                    warningDiv.style.transform = 'translateX(-50%)';
-                    warningDiv.style.zIndex = '1000';
-                    warningDiv.style.width = '80%';
-                    warningDiv.style.textAlign = 'center';
-                    warningDiv.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                    warningDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <strong>Action Required:</strong> Please update the daily rates for ${missingRates.join(' and ')} before proceeding with billing.`;
-                    
+                    warningDiv.className = 'alert-banner';
+                    warningDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span><strong>Action required:</strong> update the daily rates for ${missingRates.join(' and ')} before proceeding with billing.</span>`;
+
                     document.querySelector('.content').insertBefore(warningDiv, document.getElementById('view-content'));
                 }
             } else {
-                // Remove warning if rates are updated
                 const warningBanner = document.getElementById('rate-warning-banner');
                 if (warningBanner) {
                     warningBanner.remove();
@@ -133,25 +127,25 @@ const app = {
     generateSidebar: () => {
         const menu = document.getElementById('sidebar-menu');
         const isAdmin = app.user.role === 'ADMIN';
-        
+
         let html = `
-            <li class="active" data-view="dashboard"><i class="fas fa-chart-line"></i> Dashboard</li>
+            <li class="active" data-view="dashboard"><i class="fas fa-chart-line"></i> <span>Dashboard</span></li>
         `;
 
         if (isAdmin) {
             html += `
-                <li data-view="staff"><i class="fas fa-user-tie"></i> Manage Staff</li>
-                <li data-view="inventory"><i class="fas fa-gem"></i> Jewelry Designs</li>
-                <li data-view="rates"><i class="fas fa-coins"></i> Metal Rates</li>
-                <li data-view="reports"><i class="fas fa-chart-pie"></i> Sales Reports</li>
-                <li data-view="history"><i class="fas fa-history"></i> Bill History</li>
-                <li data-view="customers"><i class="fas fa-users"></i> Manage Customers</li>
+                <li data-view="staff"><i class="fas fa-user-tie"></i> <span>Manage Staff</span></li>
+                <li data-view="inventory"><i class="fas fa-gem"></i> <span>Jewelry Designs</span></li>
+                <li data-view="rates"><i class="fas fa-coins"></i> <span>Metal Rates</span></li>
+                <li data-view="reports"><i class="fas fa-chart-pie"></i> <span>Sales Reports</span></li>
+                <li data-view="history"><i class="fas fa-history"></i> <span>Bill History</span></li>
+                <li data-view="customers"><i class="fas fa-users"></i> <span>Manage Customers</span></li>
             `;
         } else {
             html += `
-                <li data-view="billing"><i class="fas fa-file-invoice-dollar"></i> Create Bill</li>
-                <li data-view="inventory"><i class="fas fa-boxes"></i> View Stock</li>
-                <li data-view="history"><i class="fas fa-history"></i> My Bills</li>
+                <li data-view="billing"><i class="fas fa-file-invoice-dollar"></i> <span>Create Bill</span></li>
+                <li data-view="inventory"><i class="fas fa-boxes"></i> <span>View Stock</span></li>
+                <li data-view="history"><i class="fas fa-history"></i> <span>My Bills</span></li>
             `;
         }
 
@@ -187,12 +181,12 @@ const app = {
                         <td>${bill.seller.username}</td>
                         <td>${new Date(bill.billDate).toLocaleString()}</td>
                         <td>
-                            <button class="btn-small btn-view" onclick="app.downloadPdf(${bill.id})">Download PDF</button>
+                            <button class="btn-small btn-view" onclick="app.downloadPdf(${bill.id})"><i class="fas fa-download"></i> PDF</button>
                         </td>
                     </tr>
                 `;
             } else {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Bill not found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Bill not found</td></tr>';
             }
         } catch (e) {
             alert('Bill not found');
@@ -200,25 +194,27 @@ const app = {
     },
 
     logout: () => {
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
         app.user = null;
-        
-        // Clear login form inputs
+
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         if (usernameInput) usernameInput.value = '';
         if (passwordInput) {
             passwordInput.value = '';
-            passwordInput.setAttribute('type', 'password'); // Reset to password type
+            passwordInput.setAttribute('type', 'password');
         }
-        
-        // Reset toggle icon if it exists
+
         const togglePassword = document.getElementById('togglePassword');
         if (togglePassword) {
             togglePassword.classList.remove('fa-eye');
             togglePassword.classList.add('fa-eye-slash');
         }
+
+        const warningBanner = document.getElementById('rate-warning-banner');
+        if (warningBanner) warningBanner.remove();
 
         app.showLogin();
     },
@@ -231,8 +227,8 @@ const app = {
         });
 
         document.getElementById('view-title').textContent = view.charAt(0).toUpperCase() + view.slice(1);
-        
-        switch(view) {
+
+        switch (view) {
             case 'dashboard': ui.renderDashboard(); break;
             case 'inventory': ui.renderInventory(); break;
             case 'rates': ui.renderRates(); break;
@@ -262,29 +258,151 @@ const app = {
     resetBill: () => {
         app.billItems = [];
         app.billCustomer = null;
+        app.searchedMobile = null;
+    },
+
+    clearCustomerSelection: () => {
+        app.billCustomer = null;
+        app.searchedMobile = null;
+        const mobileInput = document.getElementById('bill-cust-mobile');
+        if (mobileInput) {
+            mobileInput.value = '';
+            mobileInput.disabled = false;
+            mobileInput.focus();
+        }
+        const existingBox = document.getElementById('bill-cust-existing-box');
+        if (existingBox) existingBox.classList.add('hidden');
+        const newBox = document.getElementById('bill-cust-new-box');
+        if (newBox) newBox.classList.add('hidden');
+        const newNameInput = document.getElementById('bill-new-cust-name');
+        if (newNameInput) newNameInput.value = '';
+        const msg = document.getElementById('bill-cust-save-msg');
+        if (msg) msg.classList.add('hidden');
+        app.calculateBill();
     },
 
     fetchCustomerForBill: async () => {
-        const mobile = document.getElementById('bill-cust-mobile').value;
-        if (!mobile) return;
+        const mobileInput = document.getElementById('bill-cust-mobile');
+        const mobile = mobileInput ? mobileInput.value.trim() : '';
+        if (!mobile) {
+            alert('Please enter a mobile number');
+            if (mobileInput) mobileInput.focus();
+            return;
+        }
+
+        app.searchedMobile = mobile;
+        const existingBox = document.getElementById('bill-cust-existing-box');
+        const newBox = document.getElementById('bill-cust-new-box');
+        const msg = document.getElementById('bill-cust-save-msg');
+        if (msg) msg.classList.add('hidden');
+
         try {
             const res = await api.customers.getByMobile(mobile);
-            if (res.success) {
+            if (res.success && res.data) {
+                // Existing customer found
                 app.billCustomer = res.data;
-                document.getElementById('bill-cust-details').classList.remove('hidden');
-                document.getElementById('bill-cust-name').textContent = res.data.name;
-                document.getElementById('bill-cust-discount').textContent = res.data.discountPercent;
+                if (newBox) newBox.classList.add('hidden');
+                if (existingBox) {
+                    existingBox.classList.remove('hidden');
+                    document.getElementById('bill-cust-display-mobile').textContent = res.data.mobileNumber;
+                    document.getElementById('bill-cust-display-name').textContent = res.data.name;
+                    const discountRow = document.getElementById('bill-cust-display-discount-row');
+                    if (discountRow) {
+                        if (res.data.discountPercent && res.data.discountPercent > 0) {
+                            discountRow.classList.remove('hidden');
+                            document.getElementById('bill-cust-display-discount').textContent = res.data.discountPercent;
+                        } else {
+                            discountRow.classList.add('hidden');
+                        }
+                    }
+                }
                 app.calculateBill();
             } else {
-                alert('Customer not found');
+                // Customer not found -> prompt for new customer
+                app.showNewCustomerPrompt(mobile);
             }
-        } catch (e) { alert('Customer not found'); }
+        } catch (e) {
+            // Customer not found or 404 response
+            app.showNewCustomerPrompt(mobile);
+        }
+    },
+
+    showNewCustomerPrompt: (mobile) => {
+        app.billCustomer = null;
+        const existingBox = document.getElementById('bill-cust-existing-box');
+        if (existingBox) existingBox.classList.add('hidden');
+
+        const newBox = document.getElementById('bill-cust-new-box');
+        if (newBox) {
+            newBox.classList.remove('hidden');
+            document.getElementById('bill-cust-new-mobile-display').textContent = mobile;
+            const nameInput = document.getElementById('bill-new-cust-name');
+            if (nameInput) {
+                nameInput.value = '';
+                nameInput.focus();
+                nameInput.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        app.saveNewCustomer();
+                    }
+                };
+            }
+        }
+        app.calculateBill();
+    },
+
+    saveNewCustomer: async () => {
+        const mobile = app.searchedMobile || (document.getElementById('bill-cust-mobile') ? document.getElementById('bill-cust-mobile').value.trim() : '');
+        const nameInput = document.getElementById('bill-new-cust-name');
+        const name = nameInput ? nameInput.value.trim() : '';
+
+        if (!mobile) {
+            alert('Please enter a mobile number first');
+            return false;
+        }
+
+        if (!name) {
+            alert('Please enter the customer name');
+            if (nameInput) nameInput.focus();
+            return false;
+        }
+
+        try {
+            const customerData = {
+                mobileNumber: mobile,
+                name: name,
+                discountPercent: 0.0
+            };
+            const res = await api.customers.save(customerData);
+            if (res.success && res.data) {
+                app.billCustomer = res.data;
+                const newBox = document.getElementById('bill-cust-new-box');
+                if (newBox) newBox.classList.add('hidden');
+
+                const existingBox = document.getElementById('bill-cust-existing-box');
+                if (existingBox) {
+                    existingBox.classList.remove('hidden');
+                    document.getElementById('bill-cust-display-mobile').textContent = res.data.mobileNumber;
+                    document.getElementById('bill-cust-display-name').textContent = res.data.name;
+                    const discountRow = document.getElementById('bill-cust-display-discount-row');
+                    if (discountRow) discountRow.classList.add('hidden');
+                }
+                app.calculateBill();
+                return true;
+            } else {
+                alert(res.message || 'Failed to save customer');
+                return false;
+            }
+        } catch (e) {
+            alert('Error saving customer: ' + e.message);
+            return false;
+        }
     },
 
     addItemToBill: async () => {
         const id = document.getElementById('bill-item-select').value;
         const qty = parseInt(document.getElementById('bill-item-qty').value);
-        
+
         const res = await api.jewelry.getById(id);
         const item = res.data;
 
@@ -293,11 +411,10 @@ const app = {
             return;
         }
 
-        // Fetch current rate
         try {
             const rateRes = await api.rates.getToday(item.type);
             const rate = rateRes.data.pricePerGram;
-            
+
             const baseAmount = item.weight * rate * qty;
             const makingCharge = baseAmount * (item.makingPercent / 100);
             const total = baseAmount + makingCharge;
@@ -318,14 +435,14 @@ const app = {
 
     renderBillTable: () => {
         const tbody = document.querySelector('#bill-items-table tbody');
-        tbody.innerHTML = app.billItems.map((item, index) => `
+        tbody.innerHTML = app.billItems.length > 0 ? app.billItems.map((item, index) => `
             <tr>
                 <td>${item.name}</td>
                 <td>${item.quantity}</td>
                 <td>Rs.${item.total.toFixed(2)}</td>
-                <td><button onclick="app.removeItemFromBill(${index})">&times;</button></td>
+                <td><button class="btn-small btn-delete" onclick="app.removeItemFromBill(${index})">&times;</button></td>
             </tr>
-        `).join('');
+        `).join('') : '<tr><td colspan="4" class="table-empty">No items added yet</td></tr>';
     },
 
     removeItemFromBill: (index) => {
@@ -342,10 +459,14 @@ const app = {
         const gst = taxable * 0.03;
         const grand = taxable + gst;
 
-        document.getElementById('sum-subtotal').textContent = `Rs.${subtotal.toFixed(2)}`;
-        document.getElementById('sum-discount').textContent = `Rs.${discountAmount.toFixed(2)}`;
-        document.getElementById('sum-gst').textContent = `Rs.${gst.toFixed(2)}`;
-        document.getElementById('sum-grand').textContent = `Rs.${grand.toFixed(2)}`;
+        const subEl = document.getElementById('sum-subtotal');
+        if (subEl) subEl.textContent = `Rs.${subtotal.toFixed(2)}`;
+        const discEl = document.getElementById('sum-discount');
+        if (discEl) discEl.textContent = `Rs.${discountAmount.toFixed(2)}`;
+        const gstEl = document.getElementById('sum-gst');
+        if (gstEl) gstEl.textContent = `Rs.${gst.toFixed(2)}`;
+        const grandEl = document.getElementById('sum-grand');
+        if (grandEl) grandEl.textContent = `Rs.${grand.toFixed(2)}`;
     },
 
     generateBill: async () => {
@@ -354,8 +475,40 @@ const app = {
             return;
         }
 
+        // If new customer form is open and customer not yet saved:
+        const newBox = document.getElementById('bill-cust-new-box');
+        if (newBox && !newBox.classList.contains('hidden') && !app.billCustomer) {
+            const nameInput = document.getElementById('bill-new-cust-name');
+            const name = nameInput ? nameInput.value.trim() : '';
+            if (!name) {
+                alert('Customer name is required for new customer');
+                if (nameInput) nameInput.focus();
+                return;
+            }
+            const saved = await app.saveNewCustomer();
+            if (!saved) return;
+        }
+
+        // If user entered a mobile number but never clicked Find:
+        const mobileInput = document.getElementById('bill-cust-mobile');
+        const enteredMobile = mobileInput ? mobileInput.value.trim() : '';
+        if (enteredMobile && !app.billCustomer) {
+            await app.fetchCustomerForBill();
+            if (!app.billCustomer) {
+                const nameInput = document.getElementById('bill-new-cust-name');
+                if (!nameInput || !nameInput.value.trim()) {
+                    alert('Customer name is required for new customer');
+                    if (nameInput) nameInput.focus();
+                    return;
+                }
+                const saved = await app.saveNewCustomer();
+                if (!saved) return;
+            }
+        }
+
         const data = {
             customerMobile: app.billCustomer ? app.billCustomer.mobileNumber : null,
+            customerName: app.billCustomer ? app.billCustomer.name : null,
             items: app.billItems.map(i => ({ jewelryId: i.jewelryId, quantity: i.quantity }))
         };
 

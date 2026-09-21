@@ -5,18 +5,20 @@ const api = {
         login: (credentials) => fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify(credentials)
         }).then(res => res.json()),
-        
+
         register: (user) => fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify(user)
         }).then(res => res.json())
     },
 
     request: async (endpoint, options = {}) => {
-        const token = localStorage.getItem('auth_token'); // Using basic auth for now, so we'll store "username:password" encoded
+        const token = localStorage.getItem('auth_token');
         const headers = {
             'Content-Type': 'application/json',
             ...options.headers
@@ -26,16 +28,16 @@ const api = {
             headers['Authorization'] = `Basic ${token}`;
         }
 
-        const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+        const response = await fetch(`${API_BASE}${endpoint}`, { credentials: 'same-origin', ...options, headers });
         if (response.status === 401) {
             app.logout();
             throw new Error('Unauthorized');
         }
-        
+
         if (options.responseType === 'blob') {
             return response.blob();
         }
-        
+
         return response.json();
     },
 

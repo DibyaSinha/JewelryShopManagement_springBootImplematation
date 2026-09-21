@@ -4,6 +4,8 @@ import org.example.entity.Staff;
 import org.example.entity.User;
 import org.example.repository.StaffRepository;
 import org.example.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,7 @@ import java.util.List;
 
 @Service
 public class StaffService {
+    private static final Logger logger = LoggerFactory.getLogger(StaffService.class);
 
     @Autowired
     private StaffRepository staffRepository;
@@ -62,7 +65,9 @@ public class StaffService {
             staff.setUsername(null);
             staff.setPassword(null);
         }
-        return staffRepository.save(staff);
+        Staff saved = staffRepository.save(staff);
+        logger.info("Staff record saved in database: '{}' (ID: {})", saved.getName(), saved.getId());
+        return saved;
     }
 
     @Transactional
@@ -130,7 +135,9 @@ public class StaffService {
         existing.setSalary(details.getSalary());
         existing.setLoginAccess(details.getLoginAccess());
 
-        return staffRepository.save(existing);
+        Staff saved = staffRepository.save(existing);
+        logger.info("Staff record updated in database: ID {}", saved.getId());
+        return saved;
     }
 
     @Transactional
@@ -145,6 +152,7 @@ public class StaffService {
             
             userRepository.save(user);
             staffRepository.save(staff);
+            logger.info("Staff password hash updated for staff ID: {}", id);
         } else {
             throw new RuntimeException("Staff does not have login access enabled");
         }
@@ -157,5 +165,6 @@ public class StaffService {
             userRepository.findByUsername(staff.getUsername()).ifPresent(userRepository::delete);
         }
         staffRepository.deleteById(id);
+        logger.info("Staff record deleted from database: ID {}", id);
     }
 }

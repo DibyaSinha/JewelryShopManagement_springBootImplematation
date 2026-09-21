@@ -114,12 +114,19 @@ public class InvoiceService {
 
 
 //            document.add(new Paragraph("Jewelry Shop Management System"));
-            document.add(new Paragraph("Bill ID: " + bill.getId()));
-            document.add(new Paragraph("Date: " + bill.getBillDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))));
-            document.add(new Paragraph("Seller ID: " + bill.getSeller().getId()));
-
+            String sellerIdStr = (bill.getSeller() != null && bill.getSeller().getId() != null) ? String.valueOf(bill.getSeller().getId()) : "N/A";
+            document.add(new Paragraph("Bill ID: " + (bill.getId() != null ? bill.getId() : "N/A")));
+            document.add(new Paragraph("Date: " + (bill.getBillDate() != null ? bill.getBillDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) : "N/A")));
+            document.add(new Paragraph("Seller ID: " + sellerIdStr));
             if (bill.getCustomer() != null) {
-                document.add(new Paragraph("Customer: " + bill.getCustomer().getName() + " (" + bill.getCustomer().getMobileNumber() + ")"));
+                String custName = bill.getCustomer().getName();
+                String custMobile = bill.getCustomer().getMobileNumber();
+                if (custName != null && !custName.trim().isEmpty()) {
+                    document.add(new Paragraph("Customer Name: " + custName.trim()));
+                }
+                if (custMobile != null && !custMobile.trim().isEmpty()) {
+                    document.add(new Paragraph("Customer Mobile: " + custMobile.trim()));
+                }
             }
             document.add(new Paragraph(" "));
 
@@ -182,6 +189,7 @@ public class InvoiceService {
             document.add(grandTotal);
 
             document.close();
+            logger.info("Bill PDF generated successfully for Bill ID: {}", bill.getId());
             return baos.toByteArray();
         } catch (Exception e) {
             logger.error("Error generating PDF for Bill ID: {}", bill.getId(), e);

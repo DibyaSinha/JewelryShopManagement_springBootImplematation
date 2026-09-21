@@ -32,6 +32,10 @@ public class Jewelry {
     @Column(name = "making_percent", nullable = false)
     private Double makingPercent;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -42,7 +46,9 @@ public class Jewelry {
 
     public enum MetalType { GOLD, SILVER }
 
-    public Jewelry() {}
+    public Jewelry() {
+        this.version = 0L;
+    }
 
     public Jewelry(Long id, String name, String companyName, MetalType type, Double weight, Integer stock, Double makingPercent) {
         this.id = id;
@@ -52,6 +58,16 @@ public class Jewelry {
         this.weight = weight;
         this.stock = stock;
         this.makingPercent = makingPercent;
+        this.version = 0L;
+    }
+
+    @PostLoad
+    @PrePersist
+    @PreUpdate
+    public void ensureVersion() {
+        if (this.version == null) {
+            this.version = 0L;
+        }
     }
 
     public Long getId() { return id; }
@@ -72,4 +88,6 @@ public class Jewelry {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Long getVersion() { return version != null ? version : 0L; }
+    public void setVersion(Long version) { this.version = version != null ? version : 0L; }
 }

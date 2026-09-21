@@ -43,8 +43,18 @@ public class BillingService {
         bill.setSeller(seller);
         bill.setBillDate(LocalDateTime.now());
 
-        if (request.getCustomerMobile() != null && !request.getCustomerMobile().isEmpty()) {
-            Customer customer = customerRepository.findById(request.getCustomerMobile()).orElse(null);
+        if (request.getCustomerMobile() != null && !request.getCustomerMobile().trim().isEmpty()) {
+            String mobile = request.getCustomerMobile().trim();
+            Customer customer = customerRepository.findById(mobile).orElse(null);
+            if (customer == null) {
+                if (request.getCustomerName() != null && !request.getCustomerName().trim().isEmpty()) {
+                    customer = new Customer(mobile, request.getCustomerName().trim(), 0.0);
+                    customer = customerRepository.save(customer);
+                    logger.info("New customer created during billing: Name='{}', Mobile='{}'", customer.getName(), customer.getMobileNumber());
+                } else {
+                    throw new RuntimeException("Customer name is required for new customer");
+                }
+            }
             bill.setCustomer(customer);
         }
 
@@ -57,6 +67,10 @@ public class BillingService {
 
             if (jewelry.getStock() < itemReq.getQuantity()) {
                 throw new InsufficientStockException("Insufficient stock for: " + jewelry.getName());
+            }
+
+            if (jewelry.getVersion() == null) {
+                jewelry.setVersion(0L);
             }
 
             jewelry.setStock(jewelry.getStock() - itemReq.getQuantity());
@@ -80,6 +94,9 @@ public class BillingService {
 
             billItems.add(billItem);
             subtotal += totalItemAmount;
+
+            logger.info("Jewelry item added to bill: {}, Qty: {}", jewelry.getName(), itemReq.getQuantity());
+            logger.info("Stock updated: Item '{}' (ID: {}), stock reduced by {} (Remaining: {})", jewelry.getName(), jewelry.getId(), itemReq.getQuantity(), jewelry.getStock());
         }
 
         bill.setItems(billItems);
@@ -96,14 +113,25 @@ public class BillingService {
         bill.setGstAmount(gstAmount);
         bill.setGrandTotal(taxableAmount + gstAmount);
 
+        logger.info("Bill calculation completed: Total: Rs.{}", String.format("%.2f", bill.getGrandTotal()));
+
         bill = billRepository.save(bill);
 
-        byte[] pdfData = invoiceService.generatePdf(bill);
-        bill.setPdfData(pdfData);
-        billRepository.save(bill);
-
-        logger.info("Bill generated successfully ID: {}", bill.getId());
+        logger.info("Payment completed: Grand Total: Rs.{}", String.format("%.2f", bill.getGrandTotal()));
+        logger.info("Bill created successfully: Bill ID: {}", bill.getId());
         return bill;
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] getBillPdf(Long id) {
+        Bill bill = billRepository.findById(id).orElse(null);
+        if (bill == null) {
+            logger.warn("Bill not found for PDF export: ID {}", id);
+            return null;
+        }
+        byte[] pdf = invoiceService.generatePdf(bill);
+        logger.info("Bill PDF retrieved successfully for Bill ID: {}", id);
+        return pdf;
     }
 
     public Double getTodayRate(Jewelry.MetalType type) {

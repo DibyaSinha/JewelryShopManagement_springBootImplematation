@@ -5,12 +5,15 @@ import java.util.List;
 
 public class BillRequest {
     private String customerMobile;
+    private String customerName;
     
     @NotEmpty(message = "Bill must have at least one item")
     private List<BillItemRequest> items;
 
     public String getCustomerMobile() { return customerMobile; }
     public void setCustomerMobile(String customerMobile) { this.customerMobile = customerMobile; }
+    public String getCustomerName() { return customerName; }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
     public List<BillItemRequest> getItems() { return items; }
     public void setItems(List<BillItemRequest> items) { this.items = items; }
 

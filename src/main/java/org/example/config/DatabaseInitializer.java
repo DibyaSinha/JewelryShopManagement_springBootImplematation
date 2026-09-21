@@ -24,8 +24,23 @@ public class DatabaseInitializer implements CommandLineRunner {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Override
     public void run(String... args) {
+        if (jdbcTemplate != null) {
+            try {
+                logger.info("Checking and initializing jewelry version counter for existing records...");
+                int rowsUpdated = jdbcTemplate.update("UPDATE jewelry SET version = 0 WHERE version IS NULL");
+                if (rowsUpdated > 0) {
+                    logger.info("Database migration: Initialized version=0 for {} jewelry records.", rowsUpdated);
+                }
+            } catch (Exception e) {
+                logger.warn("Could not run jewelry version migration: {}", e.getMessage());
+            }
+        }
+
         logger.info("Checking for unhashed passwords in the database...");
         List<User> users = userRepository.findAll();
         boolean updated = false;

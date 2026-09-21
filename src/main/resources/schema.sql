@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS jewelry (
     weight DOUBLE NOT NULL,
     stock INT NOT NULL DEFAULT 0,
     making_percent DOUBLE NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -45,7 +46,6 @@ CREATE TABLE IF NOT EXISTS bills (
     gst_amount DOUBLE NOT NULL,
     grand_total DOUBLE NOT NULL,
     bill_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    pdf_data LONGBLOB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES users(id),
     FOREIGN KEY (customer_mobile) REFERENCES customers(mobile_number) ON DELETE SET NULL
@@ -84,3 +84,6 @@ CREATE INDEX idx_jewelry_type ON jewelry(type);
 CREATE INDEX idx_daily_rates_date ON daily_rates(rate_date);
 CREATE INDEX idx_bill_date ON bills(bill_date);
 CREATE INDEX idx_staff_mobile ON staff(mobile_number);
+
+-- Ensure version counter is initialized for existing jewelry records
+UPDATE jewelry SET version = 0 WHERE version IS NULL;
